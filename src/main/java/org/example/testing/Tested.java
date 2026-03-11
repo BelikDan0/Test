@@ -14,6 +14,13 @@ public class Tested {
         return 0;
     }
 
+    public Category choesCategory(List<Category> categories){
+        System.out.println("Выберите категорию вопросов");
+        for (int i = 0; i < categories.size(); i++) {
+
+        }
+        return null;
+    }
     public void startCategory(Category category){
 
     }
