@@ -13,12 +13,16 @@ import java.util.Scanner;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Tested {
-    String name="Тестирование";
-    List<Category>categories=new ArrayList<>();
-    int totalPoints=getAllPoints();
-    Scanner scanner = new Scanner(System.in)
+    private String name="Тестирование";
+    private List<Category>categories=new ArrayList<>();
+    private int totalPoints=getAllPoints();
+    Scanner scanner = new Scanner(System.in);
     public int getAllPoints(){
-        return 0;
+        int points=0;
+        for (int i = 0; i < categories.size(); i++) {
+            points+=categories.get(i).getPoints();
+        }
+        return points;
     }
 
     public Category choesCategory(List<Category> categories){
@@ -30,6 +34,6 @@ public class Tested {
         return categories.get(numberCategory-1);
     }
     public void startCategory(Category category){
-        
+        choesCategory(categories).start();
     }
 }

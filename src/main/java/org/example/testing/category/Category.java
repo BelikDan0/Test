@@ -38,48 +38,48 @@ public class Category {
         }
         this.isActive = true;
         this.isFinished = false;
-        System.out.println("Категория '" + name + "' начата. Всего вопросов:" + questionList.size());}
-
-    public Category() {
-        }
-
-        public String getName () {
-            return name;
-        }
-
-        public void setName (String name){
-            this.name = name;
-        }
-
-        public Integer getPoints () {
-            return points;
-        }
-
-        public void setPoints (Integer points){
-            this.points = points;
-        }
-
-        public List<Question> getQuestionList () {
-            return questionList;
-        }
-
-        public void setQuestionList (List < Question > questionList) {
-            this.questionList = questionList;
-        }
-
-        public Boolean getFinished () {
-            return isFinished;
-        }
-
-        public void setFinished (Boolean finished){
-            isFinished = finished;
-        }
-
-        public Boolean getActive () {
-            return isActive;
-        }
-
-        public void setActive (Boolean active){
-            isActive = active;
-        }
+        System.out.println("Категория '" + name + "' начата. Всего вопросов:" + questionList.size());
     }
+
+
+
+    public String getName () {
+            return name;
+    }
+
+    public void setName (String name){
+        this.name = name;
+    }
+
+    public Integer getPoints () {
+        return points;
+    }
+
+    public void setPoints (Integer points){
+        this.points = points;
+    }
+
+    public List<Question> getQuestionList () {
+        return questionList;
+    }
+
+    public void setQuestionList (List < Question > questionList) {
+        this.questionList = questionList;
+    }
+
+    public Boolean getFinished () {
+        return isFinished;
+    }
+
+    public void setFinished (Boolean finished){
+        isFinished = finished;
+    }
+
+    public Boolean getActive () {
+        return isActive;
+    }
+
+    public void setActive (Boolean active){
+        isActive = active;
+    }
+}
