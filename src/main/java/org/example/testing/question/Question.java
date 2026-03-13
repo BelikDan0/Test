@@ -1,8 +1,10 @@
 package org.example.testing.question;
 
+import java.util.List;
+
 public class Question {
     private String content; // текст вопроса
-    private String[] options; // варианты ответов
+    private List<String> options; // варианты ответов
     private int correctOptionIndex; // индекс правильного ответа
     private boolean isResolved; // отвечен вопрос или нет
     private int points; // баллы за правильный ответ
@@ -10,7 +12,7 @@ public class Question {
     public Question() {
     }
 
-    public Question(String content, String[] options, int correctOptionIndex, int points) {
+    public Question(String content, List<String> options, int correctOptionIndex, int points) {
         this.content = content;
         this.options = options;
         this.correctOptionIndex = correctOptionIndex;
@@ -26,11 +28,11 @@ public class Question {
         this.content = content;
     }
 
-    public String[] getOptions() {
+    public List<String> getOptions() {
         return options;
     }
 
-    public void setOptions(String[] options) {
+    public void setOptions(List<String> options) {
         this.options = options;
     }
 
@@ -60,7 +62,7 @@ public class Question {
 
     // Проверка ответа
     public boolean checkAnswer(int userChoiceIndex) {
-        if (userChoiceIndex < 0 || userChoiceIndex >= options.length) {
+        if (userChoiceIndex < 0 || userChoiceIndex >= options.size()) {
             return false;
         }
         return userChoiceIndex == correctOptionIndex;
@@ -76,7 +78,7 @@ public class Question {
     }
 
     // Редактировать
-    public void edit(String newContent, String[] newOptions, int newCorrectIndex, int newPoints) {
+    public void edit(String newContent, List<String> newOptions, int newCorrectIndex, int newPoints) {
         this.content = newContent;
         this.options = newOptions;
         this.correctOptionIndex = newCorrectIndex;
@@ -86,23 +88,23 @@ public class Question {
     public void display() {
         System.out.println("Вопрос: " + content);
         if (options != null) {
-            for (int i = 0; i < options.length; i++) {
-                System.out.println((i + 1) + ". " + options[i]);
+            for (int i = 0; i < options.size(); i++) {
+                System.out.println((i + 1) + ". " + options.get(i));
             }
         }
         System.out.println("Стоимость: " + points);
     }
     //Просто для проверки
-    public static void main(String[] args) {
-
-        String[] options = {"A. Да", "B. Нет", "C. Не знаю"};
-        Question q = new Question("Вопроссс?", options, 1, 5);
-        q.display();
-
-        System.out.println("\nПроверка ответов:");
-        System.out.println("Ответ A (индекс 0): " + q.checkAnswer(0));
-        System.out.println("Ответ B (индекс 1): " + q.checkAnswer(1));
-        System.out.println("Очки за ответ B: " + q.countPoints(1));
-        System.out.println("Вопрос отвечен? " + q.isResolved());
-    }
+//    public static void main(String[] args) {
+//
+//        String[] options = {"A. Да", "B. Нет", "C. Не знаю"};
+//        Question q = new Question("Вопроссс?", List.of(options), 1, 5);
+//        q.display();
+//
+//        System.out.println("\nПроверка ответов:");
+//        System.out.println("Ответ A (индекс 0): " + q.checkAnswer(0));
+//        System.out.println("Ответ B (индекс 1): " + q.checkAnswer(1));
+//        System.out.println("Очки за ответ B: " + q.countPoints(1));
+//        System.out.println("Вопрос отвечен? " + q.isResolved());
+//    }
 }
