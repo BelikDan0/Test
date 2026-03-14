@@ -36,6 +36,7 @@ public class Tested {
         scanner.nextLine();
         return categories.get(numberCategory-1);
     }
+
     public void startCategory(){
         choesCategory().start();
     }
