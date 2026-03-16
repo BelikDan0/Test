@@ -53,6 +53,7 @@ public class Bot extends TelegramLongPollingBot {
             return;
 
         }
+
         if (text.startsWith("/admin")) {
 
             String[] parts = text.split(" ");
@@ -82,11 +83,12 @@ public class Bot extends TelegramLongPollingBot {
 
             return;
         }
-        if(session.isAdminMode()){
+
+        if (session.isAdminMode()) {
 
             adminMenu(chatId, text, session);
-
             return;
+
         }
 
         if (!session.isTesting()) {
@@ -138,6 +140,7 @@ public class Bot extends TelegramLongPollingBot {
             session.setCategoryIndex(index);
             session.setTesting(true);
             session.setCurrentQuestion(0);
+            session.setPoints(0);
 
             send(chatId, "Категория: " + category.getName());
 
@@ -161,7 +164,7 @@ public class Bot extends TelegramLongPollingBot {
 
         msg.append("Вопрос ")
                 .append(session.getCurrentQuestion() + 1)
-                .append(" (выбираете номер ответа а не пишите сам ответ)\n");
+                .append("\n\n");
 
         msg.append(q.getContent()).append("\n\n");
 
@@ -223,45 +226,36 @@ public class Bot extends TelegramLongPollingBot {
 
     private void finishTest(long chatId, UserSession session) {
 
-        List<Category> categories = tested.getCategories();
+        Category category = session.getCategory();
 
-        if (session.getCategoryIndex() < categories.size() - 1) {
+        int maxPoints = category.getMaxPoints();
+        int userPoints = session.getPoints();
 
-            send(chatId, "Категория завершена.");
+        int grade = calculateGrade(userPoints, maxPoints);
 
-            showCategories(chatId);
+        send(chatId,
+                "🎉 Категория завершена\n\n" +
+                        "Категория: " + category.getName() +
+                        "\nБаллы: " + userPoints + " из " + maxPoints +
+                        "\nОценка: " + grade);
 
-            session.setTesting(false);
+        session.setTesting(false);
+        session.setPoints(0);
+        session.setCurrentQuestion(0);
 
-        } else {
+        showCategories(chatId);
 
-            int maxPoints = 0;
+    }
 
-            for (Category c : categories) {
-                maxPoints += c.getMaxPoints();
-            }
+    private int calculateGrade(int userPoints, int maxPoints) {
 
-            int userPoints = session.getPoints();
+        double percent = (double) userPoints / maxPoints;
 
-            int grade;
+        if (percent >= 0.9) return 5;
+        if (percent >= 0.7) return 4;
+        if (percent >= 0.5) return 3;
 
-            double percent = (double) userPoints / maxPoints;
-
-            if (percent >= 0.9) grade = 5;
-            else if (percent >= 0.7) grade = 4;
-            else if (percent >= 0.5) grade = 3;
-            else grade = 2;
-
-            send(chatId,
-                    "🎉 Тест завершён\n\n" +
-                            "Баллы: " + userPoints + " из " + maxPoints +
-                            "\nОценка: " + grade);
-
-            session.setTesting(false);
-            session.setPoints(0);
-            session.setCategoryIndex(-1);
-
-        }
+        return 2;
     }
 
     private void send(long chatId, String text) {
@@ -282,6 +276,7 @@ public class Bot extends TelegramLongPollingBot {
         }
 
     }
+
     private void adminMenu(long chatId, String text, UserSession session) {
 
         AdminPanel admin = new AdminPanel(tested);
@@ -296,7 +291,6 @@ public class Bot extends TelegramLongPollingBot {
 
                     send(chatId, "Добавление категории пока доступно только через консоль");
                     admin.addCategory();
-
                     break;
 
                 case 2:
@@ -321,21 +315,17 @@ public class Bot extends TelegramLongPollingBot {
                 case 3:
 
                     send(chatId, "Редактирование пока через консоль");
-
                     break;
 
                 case 4:
 
                     showCategories(chatId);
-
                     break;
 
                 case 0:
 
                     session.setAdminMode(false);
-
                     send(chatId, "Выход из админ панели");
-
                     break;
 
                 default:
@@ -351,4 +341,5 @@ public class Bot extends TelegramLongPollingBot {
         }
 
     }
+
 }

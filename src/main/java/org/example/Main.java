@@ -17,14 +17,13 @@ public class Main {
         AdminPanel adminPanel = new AdminPanel(tested);
 
         adminPanel.generateTemplateCategories();
-        Menu menu = new Menu(adminPanel.getTested());
-        menu.startProgram();
+//        Menu menu = new Menu(adminPanel.getTested());
+//        menu.startProgram();
 
-//        TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
-//
-//        botsApi.registerBot(new Bot(tested));
-//
-//        System.out.println("Bot started");
+        TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
+        botsApi.registerBot(new Bot(tested));
+
+        System.out.println("Bot started");
 
     }
 }
