@@ -45,7 +45,7 @@ public class AdminPanel {
         }
 
         Category category = new Category(nameCategory, allPoints, questions);
-        categories.add(category);
+        tested.getCategories().add(category);
     }
     public void deleteCategory(int index){
         if(index<categories.size()) {
@@ -108,7 +108,6 @@ public class AdminPanel {
 
             case 1:
                 addCategory();
-                tested.setCategories(categories);
                 break;
 
             case 2:
