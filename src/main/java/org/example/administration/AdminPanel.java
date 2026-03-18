@@ -3,9 +3,9 @@ package org.example.administration;
 import lombok.Data;
 
 import org.example.models.Category;
+import org.example.models.Question;
 import org.example.models.dao.CategoryDAO;
 import org.example.testing.Tested;
-import org.example.testing.question.Question;
 
 import java.util.ArrayList;
 import java.util.List;

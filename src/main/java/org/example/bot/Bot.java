@@ -2,10 +2,9 @@ package org.example.bot;
 
 
 import org.example.models.Category;
-import org.example.models.TelegramUser;
+import org.example.models.Question;
 import org.example.models.dao.CategoryDAO;
 import org.example.models.dao.TelegramUserDao;
-import org.example.testing.question.Question;
 import org.example.user.UserSession;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;

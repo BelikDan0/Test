@@ -4,8 +4,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import org.example.models.Category;
+import org.example.models.Question;
 import org.example.models.dao.CategoryDAO;
-import org.example.testing.question.Question;
 
 import java.util.List;
 import java.util.Scanner;

@@ -2,7 +2,6 @@ package org.example.models.dao;
 
 import org.example.db.HibernateUtil;
 import org.example.models.Category;
-import org.example.testing.question.Question;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 

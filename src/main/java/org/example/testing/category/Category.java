@@ -2,8 +2,7 @@ package org.example.testing.category;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-
-import org.example.testing.question.Question;
+import org.example.models.Question;
 
 import java.io.*;
 import java.util.ArrayList;
