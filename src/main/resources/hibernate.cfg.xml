@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-configuration PUBLIC
+        "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+
+<hibernate-configuration>
+    <session-factory>
+        <!-- 🔵 MySQL настройки -->
+        <property name="hibernate.connection.driver_class">com.mysql.cj.jdbc.Driver</property>
+        <property name="hibernate.connection.url">jdbc:mysql://localhost:3306/quiz_bot_db?useSSL=false&amp;serverTimezone=UTC&amp;allowPublicKeyRetrieval=true</property>
+        <property name="hibernate.connection.username">root</property>
+        <property name="hibernate.connection.password">your_password</property>
+
+        <!-- 🔵 MySQL диалект -->
+        <property name="hibernate.dialect">org.hibernate.dialect.MySQLDialect</property>
+
+        <!-- Показывать SQL в консоли -->
+        <property name="hibernate.show_sql">true</property>
+        <property name="hibernate.format_sql">true</property>
+
+        <!-- Автоматическое обновление схемы -->
+        <property name="hibernate.hbm2ddl.auto">update</property>
+
+        <!-- Пул соединений -->
+        <property name="hibernate.connection.pool_size">10</property>
+
+        <!-- Регистрация энтити -->
+        <mapping class="org.example.models.Category"/>
+        <mapping class="org.example.models.TelegramUser"/>
+        <mapping class="org.example.testing.question.Question"/>
+    </session-factory>
+</hibernate-configuration>

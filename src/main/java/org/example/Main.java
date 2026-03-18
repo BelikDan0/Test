@@ -2,28 +2,35 @@ package org.example;
 
 import org.example.administration.AdminPanel;
 import org.example.bot.Bot;
-import org.example.main_menu.Menu;
+import org.example.db.HibernateUtil;
 import org.example.testing.Tested;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 
-//TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
-// click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
 public class Main {
-    static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
+        try {
+            System.out.println("🔌 Подключение к БД...");
+            var sessionFactory = HibernateUtil.getSessionFactory();
+            System.out.println("✅ База данных подключена.");
 
-        Tested tested = new Tested();
+            Tested tested = new Tested();
+            AdminPanel adminPanel = new AdminPanel(tested);
 
-        AdminPanel adminPanel = new AdminPanel(tested);
+            // Создаём шаблоны, если БД пуста
+            adminPanel.generateTemplateCategories();
 
-        adminPanel.generateTemplateCategories();
-//        Menu menu = new Menu(adminPanel.getTested());
-//        menu.startProgram();
+            // Запуск бота
+            TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
+            botsApi.registerBot(new Bot());
 
-        TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
-        botsApi.registerBot(new Bot(tested));
+            System.out.println("🤖 Бот запущен и ожидает сообщения...");
 
-        System.out.println("Bot started");
+            // Корректное завершение работы
+            Runtime.getRuntime().addShutdownHook(new Thread(HibernateUtil::shutdown));
 
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
