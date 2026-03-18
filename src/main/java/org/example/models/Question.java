@@ -18,8 +18,7 @@ public class Question {
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
-
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "question_options", joinColumns = @JoinColumn(name = "question_id"))
     @Column(name = "option_text", length = 500)
     private List<String> options = new ArrayList<>();

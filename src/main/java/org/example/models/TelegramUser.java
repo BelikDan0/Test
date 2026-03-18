@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Table(name = "telegram_users")
 @Data
@@ -37,5 +40,17 @@ public class TelegramUser {
         this.username = username;
         this.firstName = firstName;
         this.lastName = lastName;
+    }
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<TestResult> testResults = new ArrayList<>();
+
+    // Геттер и сеттер
+    public List<TestResult> getTestResults() { return testResults; }
+    public void setTestResults(List<TestResult> testResults) { this.testResults = testResults; }
+
+    // Вспомогательный метод
+    public void addTestResult(TestResult result) {
+        testResults.add(result);
+        result.setUser(this);
     }
 }

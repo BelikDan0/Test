@@ -34,6 +34,17 @@ public class TelegramUserDao extends BaseDao<TelegramUser> {
             return newUser;
         });
     }
+    public TelegramUser findByChatIdWithResults(Long chatId) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            return session.createQuery(
+                            "SELECT DISTINCT u FROM TelegramUser u " +
+                                    "LEFT JOIN FETCH u.testResults r " +
+                                    "WHERE u.chatId = :chatId",
+                            TelegramUser.class)
+                    .setParameter("chatId", chatId)
+                    .uniqueResult();
+        }
+    }
 
     // 🔹 Обновить результат последнего теста
     public void updateUserScore(Long chatId, int score) {

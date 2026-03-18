@@ -4,29 +4,30 @@
         "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
 
 <hibernate-configuration>
-    <session-factory>
-        <!-- 🔵 MySQL настройки -->
-        <property name="hibernate.connection.driver_class">com.mysql.cj.jdbc.Driver</property>
-        <property name="hibernate.connection.url">jdbc:mysql://localhost:3306/quiz_bot_db?useSSL=false&amp;serverTimezone=UTC&amp;allowPublicKeyRetrieval=true</property>
-        <property name="hibernate.connection.username">root</property>
-        <property name="hibernate.connection.password">your_password</property>
+     <session-factory>
+          <!-- 🔴 PostgreSQL настройки -->
+          <property name="hibernate.connection.driver_class">org.postgresql.Driver</property>
+          <property name="hibernate.connection.url">jdbc:postgresql://localhost:5432/quiz_bot_db</property>
+          <property name="hibernate.connection.username">postgres</property>
+          <property name="hibernate.connection.password">2324</property>
 
-        <!-- 🔵 MySQL диалект -->
-        <property name="hibernate.dialect">org.hibernate.dialect.MySQLDialect</property>
+          <!-- 🔴 PostgreSQL диалект -->
+          <property name="hibernate.dialect">org.hibernate.dialect.PostgreSQLDialect</property>
 
-        <!-- Показывать SQL в консоли -->
-        <property name="hibernate.show_sql">true</property>
-        <property name="hibernate.format_sql">true</property>
+          <!-- Показывать SQL в консоли -->
+          <property name="hibernate.show_sql">true</property>
+          <property name="hibernate.format_sql">true</property>
 
-        <!-- Автоматическое обновление схемы -->
-        <property name="hibernate.hbm2ddl.auto">update</property>
+          <!-- Автоматическое обновление схемы -->
+          <property name="hibernate.hbm2ddl.auto">update</property>
 
-        <!-- Пул соединений -->
-        <property name="hibernate.connection.pool_size">10</property>
+          <!-- Пул соединений -->
+          <property name="hibernate.connection.pool_size">10</property>
 
-        <!-- Регистрация энтити -->
-        <mapping class="org.example.models.Category"/>
-        <mapping class="org.example.models.TelegramUser"/>
-        <mapping class="org.example.testing.question.Question"/>
-    </session-factory>
+          <!-- Регистрация энтити -->
+          <mapping class="org.example.models.Category"/>
+          <mapping class="org.example.models.TelegramUser"/>
+          <mapping class="org.example.models.Question"/>
+          <mapping class="org.example.models.TestResult"/>  <!-- 🔹 Добавьте эту строку -->
+     </session-factory>
 </hibernate-configuration>
