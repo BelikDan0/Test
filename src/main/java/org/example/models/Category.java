@@ -47,4 +47,15 @@ public class Category {
     public void removeQuestion(Question question) {
         questions.remove(question);
     }
+    public void recalculateMaxPoints() {
+        if (this.questions == null || this.questions.isEmpty()) {
+            this.maxPoints = 0;
+            return;
+        }
+        int total = 0;
+        for (Question q : this.questions) {
+            total += q.getPoints();
+        }
+        this.maxPoints = total;
+    }
 }

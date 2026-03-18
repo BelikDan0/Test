@@ -38,18 +38,30 @@ public class CategoryDAO extends BaseDao<Category> {
     public void addQuestionToCategory(Long categoryId, Question question) {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             Transaction tx = session.beginTransaction();
+
             Category category = session.createQuery(
                             "SELECT c FROM Category c LEFT JOIN FETCH c.questions WHERE c.id = :id",
                             Category.class)
                     .setParameter("id", categoryId)
                     .uniqueResult();
+
             if (category != null) {
                 if (category.getQuestions() == null) {
                     category.setQuestions(new java.util.ArrayList<>());
                 }
                 category.getQuestions().add(question);
+
+                // 🔹 ПЕРЕСЧИТЫВАЕМ maxPoints
+                int totalPoints = 0;
+                for (Question q : category.getQuestions()) {
+                    totalPoints += q.getPoints();
+                }
+                category.setMaxPoints(totalPoints);
+
                 session.merge(category);
                 tx.commit();
+
+                System.out.println("✅ Вопрос добавлен. Новые maxPoints: " + totalPoints);
             } else {
                 tx.rollback();
                 throw new RuntimeException("Category not found: " + categoryId);
@@ -60,13 +72,23 @@ public class CategoryDAO extends BaseDao<Category> {
     public void removeQuestionFromCategory(Long categoryId, int questionIndex) {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             Transaction tx = session.beginTransaction();
+
             Category category = session.createQuery(
                             "SELECT c FROM Category c LEFT JOIN FETCH c.questions WHERE c.id = :id",
                             Category.class)
                     .setParameter("id", categoryId)
                     .uniqueResult();
+
             if (category != null && questionIndex >= 0 && questionIndex < category.getQuestions().size()) {
                 category.getQuestions().remove(questionIndex);
+
+                // 🔹 ПЕРЕСЧИТЫВАЕМ maxPoints
+                int totalPoints = 0;
+                for (Question q : category.getQuestions()) {
+                    totalPoints += q.getPoints();
+                }
+                category.setMaxPoints(totalPoints);
+
                 session.merge(category);
                 tx.commit();
             } else {
