@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-configuration PUBLIC
+        "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+
+<hibernate-configuration>
+     <session-factory>
+          <!-- 🔴 PostgreSQL настройки -->
+          <property name="hibernate.connection.driver_class">org.postgresql.Driver</property>
+          <property name="hibernate.connection.url">jdbc:postgresql://localhost:5432/quiz_bot_db</property>
+          <property name="hibernate.connection.username">postgres</property>
+          <property name="hibernate.connection.password">2324</property>
+
+          <!-- 🔴 PostgreSQL диалект -->
+          <property name="hibernate.dialect">org.hibernate.dialect.PostgreSQLDialect</property>
+
+          <!-- Показывать SQL в консоли -->
+          <property name="hibernate.show_sql">true</property>
+          <property name="hibernate.format_sql">true</property>
+
+          <!-- Автоматическое обновление схемы -->
+          <property name="hibernate.hbm2ddl.auto">update</property>
+
+          <!-- Пул соединений -->
+          <property name="hibernate.connection.pool_size">10</property>
+
+          <!-- Регистрация энтити -->
+          <mapping class="org.example.models.Category"/>
+          <mapping class="org.example.models.TelegramUser"/>
+          <mapping class="org.example.models.Question"/>
+          <mapping class="org.example.models.TestResult"/>  <!-- 🔹 Добавьте эту строку -->
+     </session-factory>
+</hibernate-configuration>

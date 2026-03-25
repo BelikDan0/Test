@@ -1,9 +1,11 @@
 package org.example.administration;
 
 import lombok.Data;
+
+import org.example.models.Category;
+import org.example.models.Question;
+import org.example.models.dao.CategoryDAO;
 import org.example.testing.Tested;
-import org.example.testing.category.Category;
-import org.example.testing.question.Question;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,7 +15,7 @@ import java.util.Scanner;
 public class AdminPanel {
 
     private Tested tested;
-    private List<Category> categories = new ArrayList<>();
+    private CategoryDAO categoryDAO = new CategoryDAO();
     private Scanner scanner = new Scanner(System.in);
 
     public AdminPanel(Tested tested) {
@@ -21,201 +23,122 @@ public class AdminPanel {
     }
 
     public void addCategory() {
-
-        System.out.println("Введите название категории");
-        String nameCategory = scanner.nextLine();
+        System.out.println("📝 Введите название категории:");
+        String name = scanner.nextLine();
 
         List<Question> questions = new ArrayList<>();
 
         while (true) {
-            System.out.println("Добавить вопрос? 1 - да, 0 - нет");
+            System.out.println("➕ Добавить вопрос? 1 - да, 0 - нет");
             int choose = scanner.nextInt();
             scanner.nextLine();
 
-            if (choose == 0) {
-                break;
-            }
-
+            if (choose == 0) break;
             questions.add(addQuestion());
         }
 
-        int allPoints = 0;
-        for (Question q : questions) {
-            allPoints += q.getPoints();
-        }
+        int maxPoints = questions.stream().mapToInt(Question::getPoints).sum();
 
-        Category category = new Category(nameCategory, allPoints, questions);
-        tested.getCategories().add(category);
-    }
-    public void deleteCategory(int index){
-        if(index<categories.size()) {
-            categories.remove(index);
-        }
+        Category category = new Category(name, maxPoints);
+        questions.forEach(category::addQuestion);
+
+        categoryDAO.save(category); // ✅ Сохранение в БД
+        System.out.println("✅ Категория '" + name + "' сохранена в БД!");
     }
 
-    public Question addQuestion() {
-
-        System.out.println("Введите текст вопроса");
-        String name = scanner.nextLine();
-
-        List<String> options = new ArrayList<>();
-
-        System.out.println("Введите варианты ответа (/exit чтобы закончить)");
-
-        while (true) {
-            String option = scanner.nextLine();
-
-            if (option.equals("/exit")) {
-                break;
-            }
-
-            options.add(option);
-        }
-
-        System.out.println("Введите номер правильного ответа");
-        int correctIndex = scanner.nextInt() - 1;
-        scanner.nextLine();
-
-        System.out.println("Введите сколько баллов за вопрос");
-        int points = scanner.nextInt();
-        scanner.nextLine();
-
-        return new Question(name, options, correctIndex, points);
-    }
-    public void deleteQuestion(int indexCategory,int indexQuestion){
-        List<Question>questions=categories.get(indexCategory).getQuestionList();
-        questions.remove(indexQuestion);
-        categories.get(indexCategory).setQuestionList(questions);
-    }
-    public void editQuestionInCategory(int indexCategory,int indexQuestion,String newContent, List<String> newOptions, int newCorrectIndex, int newPoints){
-        List<Question>questions=categories.get(indexCategory).getQuestionList();
-        questions.get(indexQuestion).edit(newContent,newOptions,newCorrectIndex,newPoints);
-    }
-
-    public void menuAdmin() {
-
-        System.out.println("1 - Добавить категорию\n2 - Выйти");
-
-        int menu = scanner.nextInt();
-        scanner.nextLine();
-
-        if (menu < 1 || menu > 2) {
-            System.out.println("Нет такого выбора");
+    public void showCategories() {
+        List<Category> categories = categoryDAO.findAllWithQuestions();
+        if (categories.isEmpty()) {
+            System.out.println("Категорий нет.");
             return;
         }
 
-        switch (menu) {
-
-            case 1:
-                addCategory();
-                break;
-
-            case 2:
-                return;
+        System.out.println("\n📚 Список категорий:");
+        for (int i = 0; i < categories.size(); i++) {
+            Category c = categories.get(i);
+            System.out.println((i + 1) + ". " + c.getName() +
+                    " (Вопросов: " + c.getQuestions().size() +
+                    ", Баллов: " + c.getMaxPoints() + ")");
         }
     }
 
+    public void deleteCategory() {
+        showCategories();
+        System.out.println("Введите номер категории для удаления:");
+        int index = scanner.nextInt() - 1;
 
+        List<Category> categories = categoryDAO.findAllWithQuestions();
+        if (index >= 0 && index < categories.size()) {
+            Category toDelete = categories.get(index);
+            categoryDAO.delete(toDelete); // ✅ Удаление из БД (вопросы удалятся каскадом)
+            System.out.println("✅ Категория удалена.");
+        } else {
+            System.out.println("❌ Неверный номер.");
+        }
+    }
 
+    public void menuAdmin() {
+        while (true) {
+            System.out.println("\n🛠️ Админ-панель:");
+            System.out.println("1 - Добавить категорию");
+            System.out.println("2 - Показать категории");
+            System.out.println("3 - Удалить категорию");
+            System.out.println("0 - Выход");
 
+            int menu = scanner.nextInt();
+            scanner.nextLine();
 
-    //Шаблон при старте рпограммы
+            switch (menu) {
+                case 1 -> addCategory();
+                case 2 -> showCategories();
+                case 3 -> deleteCategory();
+                case 0 -> { return; }
+                default -> System.out.println("❌ Нет такого выбора");
+            }
+        }
+    }
+
+    private Question addQuestion() {
+        System.out.println("Введите текст вопроса:");
+        String content = scanner.nextLine();
+
+        List<String> options = new ArrayList<>();
+        System.out.println("Введите варианты ответа (по одному, /exit для завершения):");
+        while (true) {
+            String opt = scanner.nextLine();
+            if (opt.equals("/exit")) break;
+            options.add(opt);
+        }
+
+        System.out.println("Введите номер правильного ответа (1-" + options.size() + "):");
+        int correctIndex = scanner.nextInt() - 1;
+
+        System.out.println("Введите баллы за вопрос:");
+        int points = scanner.nextInt();
+        scanner.nextLine();
+
+        return new Question(content, options, correctIndex, points);
+    }
+
+    // Шаблонные данные (загружаются в БД при первом запуске)
     public void generateTemplateCategories() {
+        if (!categoryDAO.findAll().isEmpty()) {
+            System.out.println("⚠️ База данных не пуста, шаблоны не созданы.");
+            return;
+        }
 
-        List<Category> categories = new ArrayList<>();
+        Category cat1 = new Category("Простая математика", 3);
+        cat1.addQuestion(new Question("2 + 2 = ?", List.of("3", "4", "5"), 1, 1));
+        cat1.addQuestion(new Question("5 * 3 = ?", List.of("10", "15", "20"), 1, 1));
+        cat1.addQuestion(new Question("9 - 4 = ?", List.of("3", "4", "5"), 2, 1));
+        categoryDAO.save(cat1);
 
-        // ---------- Категория 1 ----------
-        List<Question> q1 = new ArrayList<>();
+        Category cat2 = new Category("Средняя математика", 3);
+        cat2.addQuestion(new Question("10 / 2 = ?", List.of("2", "5", "10"), 1, 1));
+        cat2.addQuestion(new Question("7 + 6 = ?", List.of("12", "13", "14"), 1, 1));
+        cat2.addQuestion(new Question("8 * 2 = ?", List.of("14", "16", "18"), 1, 1));
+        categoryDAO.save(cat2);
 
-        q1.add(new Question(
-                "2 + 2 = ?",
-                List.of("3", "4", "5"),
-                1,
-                1
-        ));
-
-        q1.add(new Question(
-                "5 * 3 = ?",
-                List.of("10", "15", "20"),
-                1,
-                1
-        ));
-
-        q1.add(new Question(
-                "9 - 4 = ?",
-                List.of("3", "4", "5"),
-                2,
-                1
-        ));
-
-        categories.add(new Category(
-                "Простая математика",
-                3,
-                q1
-        ));
-
-        // ---------- Категория 2 ----------
-        List<Question> q2 = new ArrayList<>();
-
-        q2.add(new Question(
-                "10 / 2 = ?",
-                List.of("2", "5", "10"),
-                1,
-                1
-        ));
-
-        q2.add(new Question(
-                "7 + 6 = ?",
-                List.of("12", "13", "14"),
-                1,
-                1
-        ));
-
-        q2.add(new Question(
-                "8 * 2 = ?",
-                List.of("14", "16", "18"),
-                1,
-                1
-        ));
-
-        categories.add(new Category(
-                "Средняя математика",
-                3,
-                q2
-        ));
-
-        // ---------- Категория 3 ----------
-        List<Question> q3 = new ArrayList<>();
-
-        q3.add(new Question(
-                "3 * 3 = ?",
-                List.of("6", "9", "12"),
-                1,
-                1
-        ));
-
-        q3.add(new Question(
-                "12 - 5 = ?",
-                List.of("6", "7", "8"),
-                1,
-                1
-        ));
-
-        q3.add(new Question(
-                "4 + 7 = ?",
-                List.of("10", "11", "12"),
-                1,
-                1
-        ));
-
-        categories.add(new Category(
-                "Еще математика",
-                3,
-                q3
-        ));
-
-        tested.setCategories(categories);
-
-        System.out.println("Шаблонные категории созданы");
+        System.out.println("✅ Шаблонные категории созданы в БД.");
     }
 }
