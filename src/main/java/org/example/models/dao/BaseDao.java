@@ -2,6 +2,7 @@ package org.example.models.dao;
 
 
 import org.example.db.HibernateUtil;
+import org.example.models.Category;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 import java.util.List;
@@ -29,6 +30,18 @@ public abstract class BaseDao<T> {
             session.merge(entity);
             tx.commit();
         }
+    }
+    public void deleteById(long id) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        Transaction tx = session.beginTransaction();
+
+        Category category = session.get(Category.class, id);
+        if (category != null) {
+            session.remove(category);
+        }
+
+        tx.commit();
+        session.close();
     }
 
     public void delete(T entity) {

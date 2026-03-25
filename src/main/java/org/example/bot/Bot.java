@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.Map;
 
 public class Bot extends TelegramLongPollingBot {
-
     private final CategoryDAO categoryDAO = new CategoryDAO();
     private final TelegramUserDao userDAO = new TelegramUserDao();
     private final TestResultDAO resultDAO = new TestResultDAO();
@@ -40,7 +39,6 @@ public class Bot extends TelegramLongPollingBot {
     @Override
     public void onUpdateReceived(Update update) {
         if (!update.hasMessage() || !update.getMessage().hasText()) return;
-
         long chatId = update.getMessage().getChatId();
         String text = update.getMessage().getText();
 
@@ -58,6 +56,13 @@ public class Bot extends TelegramLongPollingBot {
 
         // === Команды ===
         if (text.equals("/start")) {
+            if (session.isAdminMode()) {
+                send(chatId, "🚫 Вы находитесь в админке. Выйдите командой /admin 0 чтобы вернуться.");
+                return;
+            }
+            session.setTesting(false);
+            session.setDeletingCategory(false);
+            session.setDeletingQuestion(false);
             showCategories(chatId);
             return;
         }
@@ -72,25 +77,36 @@ public class Bot extends TelegramLongPollingBot {
             return;
         }
 
-        if (text.equals("/add_category") || text.equals("/добавить_категорию")) {
+        // === Команды удаления (Только админ) ===
+        if (text.equals("/delete_category") || text.equals("/удалить_категорию")) {
             if (!session.isAdminMode()) {
                 send(chatId, "🔐 Только для администраторов!");
                 return;
             }
-            startAddCategoryWizard(chatId, session);
+            startDeleteCategoryWizard(chatId, session);
             return;
         }
 
-        if (text.equals("/add_question") || text.equals("/добавить_вопрос")) {
+        if (text.equals("/delete_question") || text.equals("/удалить_вопрос")) {
             if (!session.isAdminMode()) {
                 send(chatId, "🔐 Только для администраторов!");
                 return;
             }
-            startAddQuestionWizard(chatId, session);
+            startDeleteQuestionWizard(chatId, session);
             return;
         }
 
-        // === Приоритет: обработка мастеров ===
+        // === Приоритет: обработка мастеров (Добавление/Удаление) ===
+        if (session.isDeletingCategory()) {
+            handleDeleteCategoryStep(chatId, text, session);
+            return;
+        }
+
+        if (session.isDeletingQuestion()) {
+            handleDeleteQuestionStep(chatId, text, session);
+            return;
+        }
+
         if (session.isAddingCategory()) {
             handleAddCategoryStep(chatId, text, session);
             return;
@@ -116,15 +132,13 @@ public class Bot extends TelegramLongPollingBot {
     }
 
     // ==================== КАТЕГОРИИ ====================
-
     private void showCategories(long chatId) {
         List<Category> categories = categoryDAO.findAllWithQuestions();
         if (categories.isEmpty()) {
             send(chatId, "📭 Категории пока не добавлены.");
             return;
         }
-
-        StringBuilder msg = new StringBuilder("📚 Выберите категорию:\n\n");
+        StringBuilder msg = new StringBuilder("📚 Выберите категорию:\n");
         for (int i = 0; i < categories.size(); i++) {
             Category c = categories.get(i);
             msg.append(i + 1).append(" - ").append(c.getName())
@@ -138,29 +152,24 @@ public class Bot extends TelegramLongPollingBot {
         try {
             int index = Integer.parseInt(text) - 1;
             List<Category> categories = categoryDAO.findAllWithQuestions();
-
             if (index < 0 || index >= categories.size()) {
                 send(chatId, "❌ Нет такой категории.");
                 return;
             }
-
             Category category = categories.get(index);
             session.setCategory(category);
             session.setCategoryIndex(index);
             session.setTesting(true);
             session.setCurrentQuestion(0);
             session.setPoints(0);
-
             send(chatId, "📝 Категория: " + category.getName());
             sendQuestion(chatId, session);
-
         } catch (NumberFormatException e) {
             send(chatId, "🔢 Введите номер категории.");
         }
     }
 
     // ==================== ВОПРОСЫ ====================
-
     private void sendQuestion(long chatId, UserSession session) {
         Category category = session.getCategory();
         if (category == null || category.getQuestions() == null) {
@@ -168,25 +177,20 @@ public class Bot extends TelegramLongPollingBot {
             session.setTesting(false);
             return;
         }
-
         int qIndex = session.getCurrentQuestion();
         if (qIndex >= category.getQuestions().size()) {
             finishTest(chatId, session);
             return;
         }
-
         Question q = category.getQuestions().get(qIndex);
         List<String> options = q.getOptions();
         if (options == null) options = new ArrayList<>();
-
         StringBuilder msg = new StringBuilder();
-        msg.append("❓ Вопрос ").append(qIndex + 1).append("\n\n");
-        msg.append(q.getContent()).append("\n\n");
-
+        msg.append("❓ Вопрос ").append(qIndex + 1).append("\n");
+        msg.append(q.getContent()).append("\n");
         for (int i = 0; i < options.size(); i++) {
             msg.append(i + 1).append(". ").append(options.get(i)).append("\n");
         }
-
         send(chatId, msg.toString());
     }
 
@@ -194,22 +198,18 @@ public class Bot extends TelegramLongPollingBot {
         try {
             int answer = Integer.parseInt(text) - 1;
             Question q = session.getCategory().getQuestions().get(session.getCurrentQuestion());
-
             if (answer == q.getCorrectOptionIndex()) {
                 session.setPoints(session.getPoints() + q.getPoints());
                 send(chatId, "✅ Правильно!");
             } else {
                 send(chatId, "❌ Неправильно.");
             }
-
             session.setCurrentQuestion(session.getCurrentQuestion() + 1);
-
             if (session.getCurrentQuestion() >= session.getCategory().getQuestions().size()) {
                 finishTest(chatId, session);
             } else {
                 sendQuestion(chatId, session);
             }
-
         } catch (NumberFormatException e) {
             send(chatId, "🔢 Введите номер ответа.");
         }
@@ -220,22 +220,20 @@ public class Bot extends TelegramLongPollingBot {
         int userPoints = session.getPoints();
         int maxPoints = category.getMaxPoints();
         int grade = calculateGrade(userPoints, maxPoints);
-
         userDAO.findByChatId(chatId).ifPresent(user -> {
             resultDAO.saveResult(user, category.getName(), userPoints, maxPoints, grade);
         });
-
-        send(chatId, "🎉 Тест завершён!\n\n" +
+        send(chatId, "🎉 Тест завершён!\n" +
                 "Категория: " + category.getName() +
                 "\nБаллы: " + userPoints + " из " + maxPoints +
                 "\nОценка: " + grade +
-                "\n\n💡 Используйте /results чтобы посмотреть историю");
-
+                "\n💡 Используйте /results чтобы посмотреть историю");
         session.setTesting(false);
         session.setPoints(0);
         session.setCurrentQuestion(0);
-
-        try { Thread.sleep(800); } catch (InterruptedException ignored) {}
+        try {
+            Thread.sleep(800);
+        } catch (InterruptedException ignored) {}
         showCategories(chatId);
     }
 
@@ -249,7 +247,6 @@ public class Bot extends TelegramLongPollingBot {
     }
 
     // ==================== АДМИН ====================
-
     private void handleAdminCommand(long chatId, String text, UserSession session) {
         String[] parts = text.split(" ");
         if (parts.length < 2) {
@@ -258,11 +255,15 @@ public class Bot extends TelegramLongPollingBot {
         }
         if (parts[1].equals(ADMIN_PASSWORD)) {
             session.setAdminMode(true);
-            send(chatId, "🛠️ Админ-панель:\n\n" +
+            session.setDeletingCategory(false);
+            session.setDeletingQuestion(false);
+            send(chatId, "🛠️ Админ-панель:\n" +
                     "1 ➕ Добавить вопрос в категорию\n" +
                     "2 📁 Создать новую категорию\n" +
                     "3 📋 Показать категории\n" +
-                    "4 🔄 Обновить список\n" +
+                    "4 ❌ Удалить категорию\n" +
+                    "5 ❌ Удалить вопрос\n" +
+                    "6 🔄 Обновить список\n" +
                     "0 🚪 Выход");
         } else {
             send(chatId, "🚫 Неверный пароль.");
@@ -276,7 +277,9 @@ public class Bot extends TelegramLongPollingBot {
                 case 1 -> startAddQuestionWizard(chatId, session);
                 case 2 -> startAddCategoryWizard(chatId, session);
                 case 3 -> showCategories(chatId);
-                case 4 -> {
+                case 4 -> startDeleteCategoryWizard(chatId, session);
+                case 5 -> startDeleteQuestionWizard(chatId, session);
+                case 6 -> {
                     send(chatId, "🔄 Список обновлён");
                     showCategories(chatId);
                 }
@@ -291,21 +294,135 @@ public class Bot extends TelegramLongPollingBot {
         }
     }
 
-    // ==================== МАСТЕР: ДОБАВЛЕНИЕ КАТЕГОРИИ ====================
+    // ==================== МАСТЕР: УДАЛЕНИЕ КАТЕГОРИИ ====================
+    private void startDeleteCategoryWizard(long chatId, UserSession session) {
+        List<Category> categories = categoryDAO.findAllWithQuestions();
+        if (categories.isEmpty()) {
+            send(chatId, "❌ Нет категорий для удаления.");
+            return;
+        }
+        session.setDeletingCategory(true);
+        session.setDeletingCategoryStep(0);
+        StringBuilder msg = new StringBuilder("❌ Удаление категории\n📚 Выберите категорию:\n");
+        for (int i = 0; i < categories.size(); i++) {
+            msg.append(i + 1).append(". ").append(categories.get(i).getName()).append("\n");
+        }
+        msg.append("\n🔢 Введите номер категории:");
+        send(chatId, msg.toString());
+    }
 
+    private void handleDeleteCategoryStep(long chatId, String text, UserSession session) {
+        int step = session.getDeletingCategoryStep();
+        if (step == 0) {
+            try {
+                int index = Integer.parseInt(text) - 1;
+                List<Category> categories = categoryDAO.findAllWithQuestions();
+                if (index < 0 || index >= categories.size()) {
+                    send(chatId, "❌ Нет такой категории. Введите номер ещё раз:");
+                    return;
+                }
+                session.setDeletingCategoryIndex(index);
+                session.setDeletingCategoryStep(1);
+                send(chatId, "⚠️ Вы уверены, что хотите удалить категорию \"" +
+                        categories.get(index).getName() + "\"?\n" +
+                        "Все вопросы внутри неё будут удалены.\n" +
+                        "1 - Да, удалить\n0 - Отмена");
+            } catch (NumberFormatException e) {
+                send(chatId, "🔢 Введите номер категории цифрой:");
+            }
+        } else if (step == 1) {
+            if (text.equals("1") || text.equalsIgnoreCase("да")) {
+                List<Category> categories = categoryDAO.findAllWithQuestions();
+                Category toDelete = categories.get(session.getDeletingCategoryIndex());
+                categoryDAO.delete(toDelete);
+                session.setDeletingCategory(false);
+                send(chatId, "✅ Категория удалена.");
+            } else {
+                session.setDeletingCategory(false);
+                send(chatId, "❌ Удаление отменено.");
+            }
+        }
+    }
+
+    // ==================== МАСТЕР: УДАЛЕНИЕ ВОПРОСА ====================
+    private void startDeleteQuestionWizard(long chatId, UserSession session) {
+        List<Category> categories = categoryDAO.findAllWithQuestions();
+        if (categories.isEmpty()) {
+            send(chatId, "❌ Нет категорий для удаления вопроса.");
+            return;
+        }
+        session.setDeletingQuestion(true);
+        session.setDeletingQuestionStep(0);
+        StringBuilder msg = new StringBuilder("❌ Удаление вопроса\n📚 Выберите категорию:\n");
+        for (int i = 0; i < categories.size(); i++) {
+            msg.append(i + 1).append(". ").append(categories.get(i).getName()).append("\n");
+        }
+        msg.append("\n🔢 Введите номер категории:");
+        send(chatId, msg.toString());
+    }
+
+    private void handleDeleteQuestionStep(long chatId, String text, UserSession session) {
+        int step = session.getDeletingQuestionStep();
+        if (step == 0) {
+            try {
+                int index = Integer.parseInt(text) - 1;
+                List<Category> categories = categoryDAO.findAllWithQuestions();
+                if (index < 0 || index >= categories.size()) {
+                    send(chatId, "❌ Нет такой категории. Введите номер ещё раз:");
+                    return;
+                }
+                session.setDeletingQuestionCategoryId(categories.get(index).getId());
+                session.setDeletingQuestionStep(1);
+
+                // Показать вопросы
+                Category cat = categories.get(index);
+                StringBuilder msg = new StringBuilder("📋 Вопросы в \"" + cat.getName() + "\":\n");
+                for (int i = 0; i < cat.getQuestions().size(); i++) {
+                    msg.append(i + 1).append(". ").append(cat.getQuestions().get(i).getContent()).append("\n");
+                }
+                msg.append("\n🔢 Введите номер вопроса для удаления:");
+                send(chatId, msg.toString());
+            } catch (NumberFormatException e) {
+                send(chatId, "🔢 Введите номер категории цифрой:");
+            }
+        } else if (step == 1) {
+            try {
+                int qIndex = Integer.parseInt(text) - 1;
+                Category cat = categoryDAO.findByIdWithQuestions(session.getDeletingQuestionCategoryId()).orElse(null);
+                if (cat == null || qIndex < 0 || qIndex >= cat.getQuestions().size()) {
+                    send(chatId, "❌ Нет такого вопроса. Введите номер ещё раз:");
+                    return;
+                }
+                session.setDeletingQuestionIndex(qIndex);
+                session.setDeletingQuestionStep(2);
+                send(chatId, "⚠️ Вы уверены, что хотите удалить этот вопрос?\n1 - Да, удалить\n0 - Отмена");
+            } catch (NumberFormatException e) {
+                send(chatId, "🔢 Введите номер вопроса цифрой:");
+            }
+        } else if (step == 2) {
+            if (text.equals("1") || text.equalsIgnoreCase("да")) {
+                categoryDAO.removeQuestionFromCategory(session.getDeletingQuestionCategoryId(), session.getDeletingQuestionIndex());
+                session.setDeletingQuestion(false);
+                send(chatId, "✅ Вопрос удален.");
+            } else {
+                session.setDeletingQuestion(false);
+                send(chatId, "❌ Удаление отменено.");
+            }
+        }
+    }
+
+    // ==================== МАСТЕР: ДОБАВЛЕНИЕ КАТЕГОРИИ ====================
     private void startAddCategoryWizard(long chatId, UserSession session) {
         session.setAddingCategory(true);
         session.setAddingCategoryStep(0);
         session.setAddingCategoryName(new StringBuilder());
         session.setAddingCategoryQuestions(new ArrayList<>());
         session.setAddingCategoryMaxPoints(0);
-
-        send(chatId, "📁 Создание новой категории\n\n✍️ Введите название категории:");
+        send(chatId, "📁 Создание новой категории\n✍️ Введите название категории:");
     }
 
     private void handleAddCategoryStep(long chatId, String text, UserSession session) {
         int step = session.getAddingCategoryStep();
-
         switch (step) {
             case 0 -> handleStepCategoryName(chatId, text, session);
             case 1 -> handleStepAskAddQuestions(chatId, text, session);
@@ -326,7 +443,7 @@ public class Bot extends TelegramLongPollingBot {
         }
         session.setAddingCategoryName(new StringBuilder(text.trim()));
         session.setAddingCategoryStep(1);
-        send(chatId, "✅ Название: \"" + text + "\"\n\n" +
+        send(chatId, "✅ Название: \"" + text + "\"\n" +
                 "➕ Хотите добавить вопросы сразу?\n" +
                 "1 - Да, добавить вопросы сейчас\n" +
                 "0 - Нет, создать пустую категорию");
@@ -355,7 +472,6 @@ public class Bot extends TelegramLongPollingBot {
                     "Макс. баллов: " + session.getAddingCategoryMaxPoints());
             return;
         }
-
         if (text.equals("1") || text.equalsIgnoreCase("да")) {
             session.setAddingQuestionInsideCategory(true);
             session.setAddingQuestionInsideStep(0);
@@ -364,7 +480,6 @@ public class Bot extends TelegramLongPollingBot {
             send(chatId, "✍️ Введите текст вопроса:");
             return;
         }
-
         if (text.equals("2") || text.equalsIgnoreCase("список")) {
             List<Question> questions = session.getAddingCategoryQuestions();
             if (questions.isEmpty()) {
@@ -381,7 +496,6 @@ public class Bot extends TelegramLongPollingBot {
             sendAddQuestionInstructions(chatId);
             return;
         }
-
         send(chatId, "❌ Неизвестная команда.\n" +
                 "1 - Добавить вопрос\n" +
                 "2 - Показать список\n" +
@@ -397,7 +511,6 @@ public class Bot extends TelegramLongPollingBot {
 
     private void handleStepQuestionInsideCategory(long chatId, String text, UserSession session) {
         int step = session.getAddingQuestionInsideStep();
-
         switch (step) {
             case 0 -> {
                 if (text.trim().isEmpty()) {
@@ -454,7 +567,6 @@ public class Bot extends TelegramLongPollingBot {
                         return;
                     }
                     session.setTempQuestionPoints(points);
-
                     Question newQ = new Question(
                             session.getTempQuestionText().toString(),
                             new ArrayList<>(session.getTempQuestionOptions()),
@@ -465,15 +577,12 @@ public class Bot extends TelegramLongPollingBot {
                     session.setAddingCategoryMaxPoints(
                             session.getAddingCategoryMaxPoints() + points
                     );
-
                     session.setAddingQuestionInsideCategory(false);
                     session.setAddingQuestionInsideStep(0);
-
                     send(chatId, "✅ Вопрос добавлен в категорию!\n" +
                             "Всего вопросов: " + session.getAddingCategoryQuestions().size() +
                             ", Баллов: " + session.getAddingCategoryMaxPoints() + "\n");
                     sendAddQuestionInstructions(chatId);
-
                 } catch (NumberFormatException e) {
                     send(chatId, "🔢 Введите число баллов:");
                 }
@@ -499,21 +608,18 @@ public class Bot extends TelegramLongPollingBot {
     }
 
     // ==================== МАСТЕР: ДОБАВЛЕНИЕ ВОПРОСА ====================
-
     private void startAddQuestionWizard(long chatId, UserSession session) {
         session.setAddingQuestion(true);
         session.setAddingQuestionStep(0);
         session.setAddingQuestionOptions(new ArrayList<>());
         session.setAddingQuestionText(new StringBuilder());
-
         List<Category> categories = categoryDAO.findAllWithQuestions();
         if (categories.isEmpty()) {
             send(chatId, "❌ Нет категорий для добавления вопроса.\nСначала создайте категорию.");
             session.setAddingQuestion(false);
             return;
         }
-
-        StringBuilder msg = new StringBuilder("📝 Добавление вопроса\n\n📚 Выберите категорию:\n");
+        StringBuilder msg = new StringBuilder("📝 Добавление вопроса\n📚 Выберите категорию:\n");
         for (int i = 0; i < categories.size(); i++) {
             Category c = categories.get(i);
             msg.append(i + 1).append(". ").append(c.getName())
@@ -546,7 +652,7 @@ public class Bot extends TelegramLongPollingBot {
             session.setAddingQuestionCategoryId(category.getId());
             session.setAddingQuestionStep(1);
             send(chatId, "✅ Категория: " + category.getName() +
-                    "\n\n✍️ Введите текст вопроса:");
+                    "\n✍️ Введите текст вопроса:");
         } catch (NumberFormatException e) {
             send(chatId, "🔢 Введите номер категории цифрой:");
         }
@@ -571,7 +677,7 @@ public class Bot extends TelegramLongPollingBot {
                 send(chatId, "❌ Нужно минимум 2 варианта ответа. Добавьте ещё:");
                 return;
             }
-            StringBuilder msg = new StringBuilder("✅ Варианты добавлены:\n\n");
+            StringBuilder msg = new StringBuilder("✅ Варианты добавлены:\n");
             List<String> options = session.getAddingQuestionOptions();
             for (int i = 0; i < options.size(); i++) {
                 msg.append(i + 1).append(". ").append(options.get(i)).append("\n");
@@ -597,7 +703,7 @@ public class Bot extends TelegramLongPollingBot {
             session.setAddingQuestionCorrectIndex(answer);
             session.setAddingQuestionStep(4);
             send(chatId, "✅ Правильный ответ: " + options.get(answer) +
-                    "\n\n💰 Введите количество баллов за правильный ответ (число):");
+                    "\n💰 Введите количество баллов за правильный ответ (число):");
         } catch (NumberFormatException e) {
             send(chatId, "🔢 Введите номер варианта цифрой:");
         }
@@ -641,38 +747,32 @@ public class Bot extends TelegramLongPollingBot {
     }
 
     // ==================== РЕЗУЛЬТАТЫ ====================
-
     private void showUserResults(long chatId, UserSession session) {
         TelegramUser user = userDAO.findByChatId(chatId).orElse(null);
         if (user == null) {
             send(chatId, "❌ Пользователь не найден");
             return;
         }
-
         List<TestResult> results = resultDAO.findByUser(user, 10);
         if (results.isEmpty()) {
             send(chatId, "📭 У вас пока нет пройденных тестов.\nНачните с /start");
             return;
         }
-
-        StringBuilder msg = new StringBuilder("📊 Ваши последние результаты:\n\n");
+        StringBuilder msg = new StringBuilder("📊 Ваши последние результаты:\n");
         for (int i = 0; i < results.size(); i++) {
             TestResult r = results.get(i);
-            msg.append(i + 1).append(". ").append(r.toFormattedString()).append("\n\n");
+            msg.append(i + 1).append(". ").append(r.toFormattedString()).append("\n");
         }
-
         TestResultDAO.UserStats stats = resultDAO.getUserStats(user);
         msg.append("─────────────────\n")
                 .append("📈 Общая статистика:\n")
                 .append("   🎯 Попыток: ").append(stats.attempts).append("\n")
                 .append("   ⭐ Лучший результат: ").append(stats.bestPoints).append(" баллов\n")
                 .append("   📊 Средний: ").append(String.format("%.1f", stats.avgPoints)).append(" баллов");
-
         send(chatId, msg.toString());
     }
 
     // ==================== ОТПРАВКА СООБЩЕНИЙ ====================
-
     private void send(long chatId, String text) {
         SendMessage message = new SendMessage();
         message.setChatId(String.valueOf(chatId));
