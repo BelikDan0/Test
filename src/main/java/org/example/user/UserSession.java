@@ -41,15 +41,16 @@ public class UserSession {
     private List<String> tempQuestionOptions = new ArrayList<>();
     private int tempQuestionCorrectIndex = -1;
     private int tempQuestionPoints = 0;
+    private boolean deletingCategory = false;
+    private int deletingCategoryStep = 0; // 0 - выбор, 1 - подтверждение
+    private int deletingCategoryIndex = -1;
 
+    // === Удаление вопроса (дополнение) ===
+    private int deletingQuestionIndex = -1;
     // === Удаление вопроса ===
     private boolean deletingQuestion = false;
     private int deletingQuestionStep = 0; // 0 - выбор категории, 1 - выбор вопроса
     private Long deletingQuestionCategoryId = null;
-    private int deletingQuestionIndex = -1;
 
-    // === Удаление категории (НОВОЕ) ===
-    private boolean deletingCategory = false;
-    private int deletingCategoryStep = 0; // 0 - выбор категории, 1 - подтверждение
-    private int deletingCategoryIndex = -1;
+
 }
